@@ -16,7 +16,8 @@ Build one module, spec-driven, through the agent loop. Write a spec (see "Your m
 
 The script is deterministic and safe to run twice. On Windows, run `scripts\run.ps1` instead.
 
-![Shell screenshot](docs/screenshot-placeholder.png)
+<img width="2819" height="1420" alt="image" src="https://github.com/user-attachments/assets/0b51306a-ea3a-4cae-829e-7dad25bc5125" />
+
 
 Replace the placeholder above with a real screenshot of your running shell.
 
