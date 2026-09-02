@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { PageShell } from "@ssa/ui/page-shell";
@@ -153,7 +154,15 @@ function describeComputed(raw: string): Array<{ label: string; value: string }> 
     });
 }
 
-export function OperatorLensWorkspace({ projectId }: { projectId: string }) {
+export function OperatorLensWorkspace({
+  projectId,
+  // When set, only this engagement is shown. Omitted, every engagement in the
+  // project renders, which is how the screen behaved before the index existed.
+  engagementId
+}: {
+  projectId: string;
+  engagementId?: string;
+}) {
   const [engagements, setEngagements] = useState<Engagement[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -237,7 +246,9 @@ export function OperatorLensWorkspace({ projectId }: { projectId: string }) {
 
   const visible = useMemo(
     () =>
-      engagements.map((engagement) => ({
+      engagements
+        .filter((engagement) => !engagementId || engagement.id === engagementId)
+        .map((engagement) => ({
         engagement,
         flags: [...engagement.flags]
           .filter((flag) => severityFilter === "ALL" || flag.severity === severityFilter)
@@ -250,7 +261,7 @@ export function OperatorLensWorkspace({ projectId }: { projectId: string }) {
               a.title.localeCompare(b.title)
           )
       })),
-    [engagements, severityFilter, statusFilter]
+    [engagements, engagementId, severityFilter, statusFilter]
   );
 
   if (loading) {
@@ -262,6 +273,13 @@ export function OperatorLensWorkspace({ projectId }: { projectId: string }) {
 
   return (
     <div className="space-y-6">
+      <Link
+        href={`/apps/operator-lens/projects/${encodeURIComponent(projectId)}/operator-lens`}
+        className="text-sm font-semibold text-muted hover:text-ink"
+      >
+        &larr; All analyses
+      </Link>
+
       {visible.map(({ engagement, flags }) => {
         const periodRange =
           engagement.periods.length > 0
