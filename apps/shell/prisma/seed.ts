@@ -3,7 +3,9 @@ import { join } from "node:path";
 
 import { prisma } from "@ssa/db";
 
+import { analyse } from "../src/apps/operator-lens/lib/engine";
 import { parseWorkbook } from "../src/apps/operator-lens/lib/parse-workbook";
+import { RULESET_VERSION } from "../src/apps/operator-lens/lib/ruleset";
 
 // Synthetic seed for the Sample Tracker module. Idempotent: it only inserts when
 // the table is empty, so ./scripts/run.sh can call it on every start. Run
@@ -53,6 +55,10 @@ async function seedOperatorLensDemo() {
   // demo. A real upload sets these only when the operator clicks Confirm.
   const confirmedAt = company.asOfDate;
 
+  // The engine runs on the confirmed figures only, and is pure, so seeding the
+  // flags here produces exactly what a live analysis would.
+  const analysis = analyse(figures);
+
   await prisma.engagement.create({
     data: {
       projectSlug: PROJECT_SLUG,
@@ -64,7 +70,7 @@ async function seedOperatorLensDemo() {
       currency: company.currency,
       unitScale: company.unitScale,
       benchmarkSetVersion: "unseeded",
-      rulesetVersion: "unseeded",
+      rulesetVersion: analysis.rulesetVersion,
       status: "ANALYSED",
       figuresConfirmedAt: confirmedAt,
       figuresConfirmedByName: company.preparedBy,
@@ -87,12 +93,26 @@ async function seedOperatorLensDemo() {
               }))
           }
         }))
+      },
+      flags: {
+        create: analysis.flags.map((flag) => ({
+          projectSlug: PROJECT_SLUG,
+          ruleId: flag.ruleId,
+          axis: flag.axis,
+          severity: flag.severity,
+          title: flag.title,
+          operatorPrompt: flag.operatorPrompt,
+          computedValues: flag.computedValues,
+          thresholdBreached: flag.thresholdBreached,
+          benchmarkRef: flag.benchmarkRef,
+          status: "OPEN"
+        }))
       }
     }
   });
 
   console.log(
-    `Seeded Operator Lens demo "${company.companyName}": ${periods.length} period(s), ${lineItems.length} line item(s).`
+    `Seeded Operator Lens demo "${company.companyName}": ${periods.length} period(s), ${lineItems.length} line item(s), ${analysis.flags.length} flag(s), ${analysis.skipped.length} rule(s) skipped.`
   );
 }
 
