@@ -27,6 +27,9 @@ packages/db/node_modules/.prisma/
 Thumbs.db
 *.log
 
+# Office lock files (created while a .docx/.xlsx is open)
+~$*
+
 # Agent scratch
 .claude/scratch/
 .agent/

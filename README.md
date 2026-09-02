@@ -57,20 +57,34 @@ The layout and call shapes here match the real platform, so a module carries ove
 
 ## Your module spec
 
-Fill this in before you write code.
+Module: Operator Lens (operator-lens / operatorLens)
+Operator. A consultant running commercial or operational diligence on a target company, working inside an SSA Pro project alongside the deal team. Typically the junior or mid-level person who receives the financial pack and is asked what they make of it. They are the analyst, not the approver: they decide which findings survive. The target's finance team and the client never touch this module.
+Job. Turn a target company's income statement into a defensible list of operational issues worth investigating, then work that list down to the findings that matter. Starts when a financial pack lands in the inbox; ends with a short, evidenced list fit to put in front of a partner. The consultant uploads whatever they were sent — a PDF, an Excel model, a CSV, a text document, a scan, a phone photo. There is no step where they retype a statement into a form before the software will work.
+The failure this addresses is not arithmetic. It is context. A 10% gross margin is fatal for software and unremarkable for a lumber distributor. So every comparison is made against both the company's own history and a sourced industry benchmark distribution.
+Screens.
 
-- Operator: who uses this module and in what role.
-- Job: the task they are trying to finish.
-- Screens: the views the module needs.
-- Inputs/Outputs: what data goes in, what the module produces or stores.
-- Acceptance criteria: how you know the module is done and correct.
+| Screen | Purpose |
+| --- | --- |
+| Engagements | Every analysis in this project. Create, resume, flag counts. |
+| Upload | Drop a PDF, scan, Excel, CSV, text or the input workbook. Detects kind, extracts. |
+| Review & Confirm | The human gate. Editable grid of extracted figures beside the source. Nothing is analysed until confirmed. |
+| Findings | Flags with figures, thresholds, benchmark distribution and provenance, and a "where to look" operator prompt. Filter and triage. |
+| Scorecard | Four category scores derived from the same flags. A view, not a second analysis. |
+| Rules reference | Read-only list of all 14 rules and thresholds, so the engine is inspectable. |
+| Export | CSV of flags, triage state, figures and benchmark sources. |
 
-## Known limits (intentionally missing)
+Inputs / Outputs.
+In: a statement in any of the above forms; company details (name, industry code, size band, fiscal year end, currency, unit scale); a seeded versioned benchmark table of industry percentiles with source and as-of date; operator corrections and triage decisions.
+Stored: Engagement (stamped with the benchmark set and ruleset versions used), SourceDocument, Period and LineItem (each keeping the originally extracted value and whether the operator edited it), Flag, BenchmarkStat. All scoped by projectSlug.
+Out: a prioritised triaged list of findings on screen, four category scores, and a CSV export carrying flags with triage state and notes, figures by period, and every benchmark used with its source and as-of date.
+Acceptance criteria.
+1. It ingests. A valid input workbook and a text PDF both produce figures in the review grid. Malformed files fail loudly naming a row, column or field, and write nothing.
+2. The gate holds. No engagement is analysed before its figures are confirmed. Edited figures are marked as edited and keep the extracted original underneath.
+3. It is deterministic. The same confirmed figures produce identical flags on every run and every machine. Exporting twice with no changes yields identical files.
+4. It degrades honestly. A single-period upload fires only benchmark and coherence rules, names every rule it skipped and why, and cannot score as healthy.
+5. It is correct. One fixture per rule fires exactly that rule; a clean company fires none.
+6. It persists and scopes. Triage state, notes and owners survive a restart. An engagement in one project is invisible and inaccessible from another.
+7. It is inspectable. Every flag shows its figures, threshold and benchmark source, and the rules screen lists all 14 with their thresholds.
+8. It runs without AI. With ENABLE_LLM_NARRATIVE off, every screen renders and the workbook path works end to end.
+Full spec: docs/operator-lens/SPEC.md. Build plan: docs/operator-lens/PLAN.md.
 
-The following are Phase 3 and deliberately absent:
-
-- Auth. The app runs as a static "Demo User" (admin) stub. Spots where auth belongs are marked with `PHASE-3` comments. Do not add login.
-- Deployment. This template runs locally only.
-- Federated modules and a separate database server.
-
-If your module seems to need any of these, flag it rather than build it.

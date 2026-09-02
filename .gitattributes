@@ -1,0 +1,5 @@
+# Markdown is stored and checked out with LF on every platform. Without this,
+# core.autocrlf can let CRLF reach a blob (it did for README.md), which makes
+# every line look modified and turns a one-line upstream change into a
+# whole-file merge conflict.
+*.md text eol=lf

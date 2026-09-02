@@ -85,6 +85,8 @@ function getItemIcon(key: string) {
       return <EyeIcon />;
     case "sample-tracker":
       return <ClipboardIcon />;
+    case "operator-lens":
+      return <EyeIcon />;
     case "project-members-users":
       return <UsersIcon />;
     default:
@@ -98,6 +100,7 @@ function getItemIcon(key: string) {
 const MODULE_KEY_TO_NAV_KEY: Record<string, string> = {
   "project-overview": "project-overview",
   "sample-tracker": "sample-tracker",
+  "operator-lens": "operator-lens",
   "project-members": "project-members-users"
 };
 

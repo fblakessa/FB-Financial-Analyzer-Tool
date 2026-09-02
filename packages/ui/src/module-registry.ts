@@ -11,7 +11,11 @@ import type { ProjectModuleKey } from "@ssa/project-context/project-portfolio";
 // To add a module: add its key to ModuleKey and a MODULE_REGISTRY entry here,
 // then a PROJECT_MODULE_NAV row in route-groups.ts and the camelCase key in
 // packages/project-context/src/project-portfolio.ts. See the README.
-export type ModuleKey = "project-overview" | "sample-tracker" | "project-members";
+export type ModuleKey =
+  | "project-overview"
+  | "sample-tracker"
+  | "operator-lens"
+  | "project-members";
 
 export type ModuleEntry = {
   key: ModuleKey;
@@ -41,6 +45,17 @@ export const MODULE_REGISTRY: ModuleEntry[] = [
     href: (slug) => `/apps/sample-tracker/projects/${slug}/sample-tracker`,
     match: /^(?:\/apps\/sample-tracker)?\/projects\/([^/]+)\/sample-tracker(?:\/|$)/,
     requiresModule: "sampleTracker",
+    external: false
+  },
+  {
+    key: "operator-lens",
+    // In-shell, same-origin module mounted under (app)/apps/operator-lens/.
+    // The /apps/operator-lens prefix is kept in the URL and made OPTIONAL in
+    // the matcher so both the full path and a stripped path resolve. Anchored
+    // to the /operator-lens segment so it cannot shadow overview or members.
+    href: (slug) => `/apps/operator-lens/projects/${slug}/operator-lens`,
+    match: /^(?:\/apps\/operator-lens)?\/projects\/([^/]+)\/operator-lens(?:\/|$)/,
+    requiresModule: "operatorLens",
     external: false
   },
   {

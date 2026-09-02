@@ -88,3 +88,52 @@ The folder layout, registry, nav, `ModuleGate`, `@ssa/db`, and `@ssa/server/acce
 ## Phase 3 (not yet)
 
 Auth, user management, deployment, a separate database server, and federated modules are out of scope. The app runs as a static "Demo User" (admin) stub; spots where auth belongs are marked with `PHASE-3` comments. If a task seems to need any of these, flag it instead of building it.
+
+Module: Operator Lens
+Income statement analyser for diligence consultants. Upload a statement in whatever form it arrived, confirm the extracted figures, get deterministic operational flags with sourced industry benchmarks, triage them, export.
+Full requirements: docs/operator-lens/SPEC.md. Build sequence: docs/operator-lens/PLAN.md.
+Mirroring rule. CLAUDE.md and AGENTS.md are identical. Any change to either must be applied to both in the same commit.
+Naming — two different things get called "template"
+• SSA Pro Module Template = this repo, the shell.
+• Input workbook = templates/OperatorLens_Input_Workbook_v1.xlsx, the Excel file an operator may fill in. Source kind WORKBOOK_XLSX. Parsed by lib/parse-workbook.ts.
+Never write "the template" unqualified, in prose or in identifiers.
+The input workbook is never required. It is the canonical schema extractors target, the fallback for unreadable files, and the test fixture format. Never build a path that forces an operator through it. Primary flow is: upload a PDF, scan, Excel, CSV or text.
+Module keys
+operator-lens (ModuleKey, kebab) · operatorLens (ProjectModuleKey, camel) · OPERATOR_LENS (PlatformModule, UPPER_SNAKE — Phase 3 only, do not add here).
+Registration — the packages/ui exception
+The repo rule is do not touch packages/ui/**. That means the chrome. Registration entries are the documented exception. In packages/ui change only:
+• module-registry.ts — one ModuleKey member, one MODULE_REGISTRY entry
+• route-groups.ts — one PROJECT_MODULE_NAV row
+Nothing else in that package, except the two registration lookups in `app-shell.tsx` that the shell's own comments invite: one `MODULE_KEY_TO_NAV_KEY` row and one `getItemIcon()` case. No layout, no styling, no other component change.
+When copying the sample-tracker registry entry, keep its regex anchoring and its optional /apps/operator-lens prefix group, and do not disturb MATCH_ORDER — project-overview must stay last or its regex shadows sibling routes.
+The determinism contract
+Same confirmed figures + same industry code + same benchmark set version + same ruleset version = identical flags, every time, on any machine. The boundary is confirmed figures, not the uploaded file.
+• Ingestion is three stages: extract → Review & Confirm (human gate) → analyse.
+• A model may propose figures before the gate. Nothing after the gate may touch a model.
+• No engagement is analysed until figuresConfirmedAt is set. No route bypasses the gate.
+• No LLM may decide whether a flag fires, its severity, or its ordering.
+• Money is integer minor units, never float. Ratios round to 4dp at the single choke point in lib/metrics.ts and nowhere else.
+• benchmarkSetVersion and rulesetVersion are written to every engagement.
+Layering — follow Sample Tracker's three tiers
+
+| Tier | Path | Rule |
+| --- | --- | --- |
+| Pure logic | apps/shell/src/apps/operator-lens/lib/ | No React, no Prisma, no clock, no network, no randomness. The engine lives here, which is what makes determinism testable. |
+| State | .../hooks/ | "use client", useState/useMemo wrappers. No business logic. |
+| UI | .../components/ | Fetch, render, submit. Owns loading/saving/error state. |
+| Impure I/O | .../extract/ | Model calls for extraction. Deliberately outside lib/ so the purity boundary is visible in the folder tree. |
+
+Scoping
+Every model carries projectSlug String with @@index([projectSlug]). Every route handler calls requireProjectAccess(projectSlug, "operatorLens") before any Prisma call. Every page wraps in <ModuleGate projectId moduleKey="operatorLens"> and mounts client-only via next/dynamic with { ssr: false }. Routes use projectId, handlers use projectSlug; same value, different names, do not interchange.
+Benchmarks
+Every benchmark comparison on screen renders its source name, as-of date and sample size, and shows the full P10/P25/P50/P75/P90 distribution rather than a pass/fail. An unsourced benchmark on screen is a bug.
+Tests
+Vitest with globals: false. Colocated as src/**/*.test.ts, never a separate test tree. Every test file imports { describe, expect, it } from "vitest" explicitly. Run via ./scripts/test.sh. One fixture per rule, plus a clean company where nothing fires.
+Python
+One script only: scripts/analysis/build_benchmarks.py, run manually and offline to compute industry percentiles into a committed JSON seed. It is not part of run.sh, reset.sh or test.sh, and the app never shells out to Python at runtime. Adding Python to this repo is a new toolchain — confirm before creating it.
+Do not build in this module
+OCR beyond model vision · balance sheet · cash flow · exports beyond CSV · file versioning · operator-tunable thresholds · peer-set overrides · portfolio view · multi-currency.
+If one comes up mid-task: open a GitHub issue, say so, keep building.
+LLM narrative
+Behind ENABLE_LLM_NARRATIVE, default off. Only rephrases an already-fired flag into prose. Cannot create, suppress, reorder or re-score flags. Every screen must render and the workbook path must work end to end with the flag off.
+
