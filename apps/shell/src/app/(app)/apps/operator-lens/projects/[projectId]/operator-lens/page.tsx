@@ -5,13 +5,13 @@ import { useParams } from "next/navigation";
 
 import { ModuleGate } from "@ssa/ui/module-gate";
 
-// Day 1 registration placeholder. Mirrors the Sample Tracker route shape: the
-// module UI is loaded client-side and wrapped in <ModuleGate>, which blocks the
-// module unless it is enabled for this project. No feature logic yet.
-const OperatorLensPlaceholder = dynamic(
+// Mirrors the Sample Tracker route shape: the module UI is loaded client-side
+// and wrapped in <ModuleGate>, which blocks the module unless it is enabled for
+// this project.
+const OperatorLensWorkspace = dynamic(
   () =>
-    import("@/apps/operator-lens/components/operator-lens-placeholder").then(
-      (mod) => mod.OperatorLensPlaceholder
+    import("@/apps/operator-lens/components/operator-lens-workspace").then(
+      (mod) => mod.OperatorLensWorkspace
     ),
   { ssr: false }
 );
@@ -21,7 +21,7 @@ export default function OperatorLensPage() {
 
   return (
     <ModuleGate projectId={projectId} moduleKey="operatorLens">
-      <OperatorLensPlaceholder />
+      <OperatorLensWorkspace projectId={projectId} />
     </ModuleGate>
   );
 }

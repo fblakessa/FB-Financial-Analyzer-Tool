@@ -9,7 +9,14 @@ cd "$REPO"
 
 # Absolute DB path so migrate (cwd packages/db) and the app (cwd apps/shell) hit
 # the same SQLite file regardless of where each command runs.
-export DATABASE_URL="${DATABASE_URL:-file:$REPO/dev.db}"
+#
+# Prisma needs a NATIVE path. Under Git Bash on Windows, `pwd` returns
+# /c/Users/... which Prisma resolves literally against the drive root, silently
+# creating a phantom C:\c\Users\... tree instead of using the repo's dev.db.
+# `pwd -W` returns C:/Users/... there; on Linux and macOS it is unsupported, so
+# fall back to $REPO. Matches what scripts/run.ps1 does on Windows.
+REPO_NATIVE="$(pwd -W 2>/dev/null || printf '%s' "$REPO")"
+export DATABASE_URL="${DATABASE_URL:-file:$REPO_NATIVE/dev.db}"
 
 if [ ! -d node_modules ]; then
   echo "==> Installing dependencies (first run, this can take a minute)..."
