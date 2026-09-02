@@ -11,6 +11,7 @@ import {
   lineItemRank,
   unitScaleLabel
 } from "../lib/line-items";
+import { BenchmarkStrip, type BenchmarkStripData } from "./benchmark-strip";
 
 // Findings screen. Visual language follows Sample Tracker: rounded cards on the
 // canvas, ink headings, muted body copy, uppercase tracked column headers.
@@ -38,6 +39,8 @@ type Flag = {
 type LineItem = { code: string; valueMinor: string; wasEditedByOperator: boolean };
 type Period = { id: string; label: string; ordinal: number; lineItems: LineItem[] };
 
+type IndustryContext = BenchmarkStripData & { periodLabel: string };
+
 type Engagement = {
   id: string;
   companyName: string;
@@ -50,7 +53,28 @@ type Engagement = {
   unitScale: string;
   flags: Flag[];
   periods: Period[];
+  industryContext: IndustryContext[];
 };
+
+// A benchmark flag stores the whole distribution it fired against, so the strip
+// renders from the flag itself and cannot drift from what fired.
+function stripFromFlag(flag: Flag): BenchmarkStripData | null {
+  try {
+    const parsed = JSON.parse(flag.computedValues) as {
+      companyValueBps?: number;
+      percentilePosition?: number;
+      benchmark?: Omit<BenchmarkStripData, "companyValueBps" | "percentilePosition">;
+    };
+    if (!parsed.benchmark || parsed.companyValueBps === undefined) return null;
+    return {
+      ...parsed.benchmark,
+      companyValueBps: parsed.companyValueBps,
+      percentilePosition: parsed.percentilePosition ?? 50
+    };
+  } catch {
+    return null;
+  }
+}
 
 const SEVERITY_RANK: Record<string, number> = { HIGH: 0, MEDIUM: 1, LOW: 2 };
 const AXIS_RANK: Record<string, number> = { BENCHMARK: 0, TREND: 1, COHERENCE: 2 };
@@ -162,7 +186,8 @@ export function OperatorLensWorkspace({ projectId }: { projectId: string }) {
             ...entry,
             currency: figures?.currency ?? "USD",
             unitScale: figures?.unitScale ?? "ACTUALS",
-            periods: figures?.periods ?? []
+            periods: figures?.periods ?? [],
+            industryContext: entry.industryContext ?? []
           };
         })
       );
@@ -391,6 +416,16 @@ export function OperatorLensWorkspace({ projectId }: { projectId: string }) {
                           </div>
                         </div>
 
+                        {/* Benchmark flags carry their distribution with them. */}
+                        {(() => {
+                          const strip = stripFromFlag(flag);
+                          return strip ? (
+                            <div className="mt-4">
+                              <BenchmarkStrip data={strip} />
+                            </div>
+                          ) : null;
+                        })()}
+
                         {/* The operator prompt is the point of the tool, so it
                             gets its own band rather than sitting in body copy. */}
                         <div className="mt-4 rounded-2xl bg-ink/[0.04] p-4 ring-1 ring-ink/10">
@@ -454,6 +489,25 @@ export function OperatorLensWorkspace({ projectId }: { projectId: string }) {
                   })}
                 </ol>
               )}
+
+              {/* Industry context for every benchmark metric, whether or not a
+                  rule fired. Without this the distribution is invisible unless
+                  the company happens to breach a quartile. */}
+              {engagement.industryContext.length > 0 ? (
+                <div className={CARD}>
+                  <p className="text-sm font-bold text-ink">
+                    Industry context ({engagement.industryContext[0].periodLabel})
+                  </p>
+                  <p className="mt-1 text-sm text-muted">
+                    Where this company sits on the seeded distribution, whether or not a rule fired.
+                  </p>
+                  <div className="mt-4 space-y-3">
+                    {engagement.industryContext.map((context) => (
+                      <BenchmarkStrip key={context.metricCode} data={context} />
+                    ))}
+                  </div>
+                </div>
+              ) : null}
 
               {/* Underlying figures, collapsed by default: the findings are the
                   screen, the statement is the evidence behind them. */}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { analyse } from "./engine";
+import { analyse, percentilePosition, type BenchmarkStat } from "./engine";
 import {
   buildFigures,
   C01_COMPANY,
@@ -82,6 +82,129 @@ describe("degradation", () => {
   it("skips only the three-period rules on two periods", () => {
     const result = analyse(buildFigures(T01_COMPANY));
     expect(result.skipped.map((entry) => entry.ruleId)).toEqual(["T-02", "T-03"]);
+  });
+});
+
+// Stub distribution, not the seeded one: these tests check the comparison
+// logic, not the peer data.
+const INDUSTRY = "TEST_INDUSTRY";
+const BAND = "$25M - $100M";
+
+function stat(metricCode: string, percentiles: [number, number, number, number, number]): BenchmarkStat {
+  const [p10, p25, p50, p75, p90] = percentiles;
+  return {
+    setVersion: "test-v1",
+    industryCode: INDUSTRY,
+    sizeBand: BAND,
+    metricCode,
+    p10,
+    p25,
+    p50,
+    p75,
+    p90,
+    source: "Stub",
+    asOfDate: "2026-01-31",
+    sampleSize: 8
+  };
+}
+
+const BENCHMARKS = [
+  stat("GROSS_MARGIN", [0.35, 0.45, 0.5, 0.55, 0.6]),
+  stat("SGA_PCT_REVENUE", [0.2, 0.25, 0.3, 0.35, 0.4]),
+  stat("EBITDA_MARGIN", [0.02, 0.05, 0.1, 0.15, 0.2])
+];
+
+const CONTEXT = { industryCode: INDUSTRY, sizeBand: BAND, benchmarks: BENCHMARKS };
+
+describe("benchmark axis", () => {
+  // CLEAN_COMPANY: gross margin 60%, SG&A 30%, EBITDA margin 25%.
+  it("fires nothing when the company sits inside the distribution", () => {
+    const flags = analyse(buildFigures(CLEAN_COMPANY), CONTEXT).flags;
+    expect(flags.filter((flag) => flag.axis === "BENCHMARK")).toEqual([]);
+  });
+
+  it("fires B-01 when gross margin is below P25", () => {
+    // Gross margin 40% against a P25 of 45%.
+    const figures = buildFigures({
+      periods: ["FY2025"],
+      rows: { REVENUE: [1000], COGS: [600], GROSS_PROFIT: [400], SGA_TOTAL: [300], EBITDA: [100] }
+    });
+    const ids = analyse(figures, CONTEXT).flags.map((flag) => flag.ruleId);
+    expect(ids).toContain("B-01");
+    expect(ids).not.toContain("B-02");
+    expect(ids).not.toContain("B-03");
+  });
+
+  it("fires B-02 when SG&A percent of revenue is above P75", () => {
+    const figures = buildFigures({
+      periods: ["FY2025"],
+      rows: { REVENUE: [1000], COGS: [400], GROSS_PROFIT: [600], SGA_TOTAL: [400], EBITDA: [150] }
+    });
+    const ids = analyse(figures, CONTEXT).flags.map((flag) => flag.ruleId);
+    expect(ids).toContain("B-02");
+    expect(ids).not.toContain("B-01");
+  });
+
+  it("fires B-03 when EBITDA margin is below P25", () => {
+    const figures = buildFigures({
+      periods: ["FY2025"],
+      rows: { REVENUE: [1000], COGS: [400], GROSS_PROFIT: [600], SGA_TOTAL: [300], EBITDA: [30] }
+    });
+    const ids = analyse(figures, CONTEXT).flags.map((flag) => flag.ruleId);
+    expect(ids).toContain("B-03");
+  });
+
+  it("carries the whole distribution and provenance on the flag", () => {
+    const figures = buildFigures({
+      periods: ["FY2025"],
+      rows: { REVENUE: [1000], COGS: [600], GROSS_PROFIT: [400], SGA_TOTAL: [300], EBITDA: [100] }
+    });
+    const flag = analyse(figures, CONTEXT).flags.find((entry) => entry.ruleId === "B-01");
+    expect(flag?.benchmarkRef).toBe("test-v1:GROSS_MARGIN");
+    const computed = JSON.parse(flag?.computedValues ?? "{}");
+    expect(computed.benchmark).toMatchObject({
+      p10Bps: 3500,
+      p25Bps: 4500,
+      p50Bps: 5000,
+      p75Bps: 5500,
+      p90Bps: 6000,
+      sampleSize: 8,
+      asOfDate: "2026-01-31"
+    });
+    expect(computed.companyValueBps).toBe(4000);
+  });
+
+  it("reports rules as unbenchmarked when no row matches the industry", () => {
+    const result = analyse(buildFigures(CLEAN_COMPANY), {
+      industryCode: "NO_SUCH_INDUSTRY",
+      sizeBand: BAND,
+      benchmarks: BENCHMARKS
+    });
+    expect(result.unbenchmarked.map((entry) => entry.ruleId)).toEqual(["B-01", "B-02", "B-03"]);
+    expect(result.flags.filter((flag) => flag.axis === "BENCHMARK")).toEqual([]);
+  });
+
+  it("reports rules as unbenchmarked when no benchmarks are supplied at all", () => {
+    const result = analyse(buildFigures(CLEAN_COMPANY));
+    expect(result.unbenchmarked.map((entry) => entry.ruleId)).toEqual(["B-01", "B-02", "B-03"]);
+  });
+});
+
+describe("percentilePosition", () => {
+  const gm = stat("GROSS_MARGIN", [0.35, 0.45, 0.5, 0.55, 0.6]);
+
+  it("clamps at the published ends", () => {
+    expect(percentilePosition(gm, 0.2)).toBe(10);
+    expect(percentilePosition(gm, 0.9)).toBe(90);
+  });
+
+  it("returns the exact percentile at a published point", () => {
+    expect(percentilePosition(gm, 0.5)).toBe(50);
+  });
+
+  it("interpolates between published points", () => {
+    // Halfway between P50 (0.50) and P75 (0.55).
+    expect(percentilePosition(gm, 0.525)).toBe(63);
   });
 });
 

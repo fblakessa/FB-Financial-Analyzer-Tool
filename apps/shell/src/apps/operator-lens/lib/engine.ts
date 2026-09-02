@@ -34,13 +34,41 @@ export type Flag = {
   benchmarkRef: string | null;
 };
 
+// A seeded percentile distribution for one industry/size/metric. Passed in
+// rather than fetched, so the engine stays pure and the benchmark set used is
+// whatever the caller stamped on the engagement.
+export type BenchmarkStat = {
+  setVersion: string;
+  industryCode: string;
+  sizeBand: string;
+  metricCode: string;
+  p10: number;
+  p25: number;
+  p50: number;
+  p75: number;
+  p90: number;
+  source: string;
+  asOfDate: string;
+  sampleSize: number;
+};
+
+export type EngineContext = {
+  industryCode?: string | null;
+  sizeBand?: string | null;
+  benchmarks?: BenchmarkStat[];
+};
+
 export type SkippedRule = { ruleId: string; minPeriods: number; periodCount: number };
+
+export type UnbenchmarkedRule = { ruleId: string; metricCode: string };
 
 export type EngineResult = {
   rulesetVersion: string;
   flags: Flag[];
   // Reported so the UI can show reduced coverage rather than implying a pass.
   skipped: SkippedRule[];
+  // Benchmark rules that had no seeded row for this industry and size band.
+  unbenchmarked: UnbenchmarkedRule[];
 };
 
 const SEVERITY_ORDER: Record<RuleSeverity, number> = { HIGH: 0, MEDIUM: 1, LOW: 2 };
@@ -61,7 +89,8 @@ function bpsText(bps: number): string {
 function makeFlag(
   ruleId: string,
   titleSuffix: string,
-  computed: Record<string, unknown>
+  computed: Record<string, unknown>,
+  benchmarkRef: string | null = null
 ): Flag {
   const rule = RULES_BY_ID[ruleId];
   return {
@@ -72,15 +101,41 @@ function makeFlag(
     operatorPrompt: rule.operatorPrompt,
     computedValues: JSON.stringify(computed),
     thresholdBreached: rule.threshold,
-    benchmarkRef: null
+    benchmarkRef
   };
 }
 
-export function analyse(figures: EngineFigures): EngineResult {
+// Where a company value sits on the seeded distribution, interpolated between
+// the five published percentiles. Returned as an integer percentile so the
+// strip can render a marker without re-deriving anything.
+export function percentilePosition(stat: BenchmarkStat, value: number): number {
+  const points: Array<[number, number]> = [
+    [stat.p10, 10],
+    [stat.p25, 25],
+    [stat.p50, 50],
+    [stat.p75, 75],
+    [stat.p90, 90]
+  ];
+  if (value <= points[0][0]) return 10;
+  if (value >= points[points.length - 1][0]) return 90;
+  for (let i = 1; i < points.length; i++) {
+    const [lowValue, lowP] = points[i - 1];
+    const [highValue, highP] = points[i];
+    if (value <= highValue) {
+      if (highValue === lowValue) return highP;
+      const span = (value - lowValue) / (highValue - lowValue);
+      return Math.round(lowP + span * (highP - lowP));
+    }
+  }
+  return 90;
+}
+
+export function analyse(figures: EngineFigures, context: EngineContext = {}): EngineResult {
   const periods = [...figures.periods].sort((a, b) => a.ordinal - b.ordinal);
   const periodCount = periods.length;
   const flags: Flag[] = [];
   const skipped: SkippedRule[] = [];
+  const unbenchmarked: UnbenchmarkedRule[] = [];
 
   const get = periods.map((period) => lookupFor(figures, period.ordinal));
   const revenue = (i: number) => get[i]("REVENUE");
@@ -93,6 +148,74 @@ export function analyse(figures: EngineFigures): EngineResult {
     if (periodCount < rule.minPeriods) {
       skipped.push({ ruleId: rule.id, minPeriods: rule.minPeriods, periodCount });
     }
+  }
+
+  // --- B-01 / B-02 / B-03: the seeded percentile distribution -------------
+  //
+  // Benchmark rules read the most recent period, which is the one a diligence
+  // conversation is actually about. Industry and size band are inputs the
+  // operator confirmed, never inferred here.
+  const benchmarkRules: Array<{
+    ruleId: string;
+    metricCode: string;
+    numeratorCode: string;
+    direction: "below_p25" | "above_p75";
+  }> = [
+    { ruleId: "B-01", metricCode: "GROSS_MARGIN", numeratorCode: "GROSS_PROFIT", direction: "below_p25" },
+    { ruleId: "B-02", metricCode: "SGA_PCT_REVENUE", numeratorCode: "SGA_TOTAL", direction: "above_p75" },
+    { ruleId: "B-03", metricCode: "EBITDA_MARGIN", numeratorCode: "EBITDA", direction: "below_p25" }
+  ];
+
+  const latest = periodCount - 1;
+  for (const rule of benchmarkRules) {
+    if (periodCount < RULES_BY_ID[rule.ruleId].minPeriods) continue;
+
+    const stat = (context.benchmarks ?? []).find(
+      (candidate) =>
+        candidate.metricCode === rule.metricCode &&
+        candidate.industryCode === context.industryCode &&
+        candidate.sizeBand === context.sizeBand
+    );
+    // No seeded row for this industry and band means no comparison, reported
+    // as reduced coverage rather than silently passing.
+    if (!stat) {
+      unbenchmarked.push({ ruleId: rule.ruleId, metricCode: rule.metricCode });
+      continue;
+    }
+
+    const value = ratio(get[latest](rule.numeratorCode), revenue(latest));
+    if (value === null) continue;
+
+    const fired =
+      rule.direction === "below_p25" ? value < stat.p25 : value > stat.p75;
+    if (!fired) continue;
+
+    flags.push(
+      makeFlag(rule.ruleId, ` (${periods[latest].label})`, {
+        period: periods[latest].label,
+        metricCode: rule.metricCode,
+        companyValueBps: toBps(value),
+        comparedAgainst: rule.direction === "below_p25" ? "P25" : "P75",
+        thresholdValueBps: toBps(rule.direction === "below_p25" ? stat.p25 : stat.p75),
+        percentilePosition: percentilePosition(stat, value),
+        // The whole distribution travels with the flag so the strip renders
+        // from stored data and cannot drift from what fired.
+        benchmark: {
+          setVersion: stat.setVersion,
+          metricCode: stat.metricCode,
+          industryCode: stat.industryCode,
+          sizeBand: stat.sizeBand,
+          p10Bps: toBps(stat.p10),
+          p25Bps: toBps(stat.p25),
+          p50Bps: toBps(stat.p50),
+          p75Bps: toBps(stat.p75),
+          p90Bps: toBps(stat.p90),
+          source: stat.source,
+          asOfDate: stat.asOfDate,
+          sampleSize: stat.sampleSize
+        }
+      }, `${stat.setVersion}:${stat.metricCode}`)
+    );
   }
 
   // --- T-01 / T-04: cost growth outpacing revenue growth ------------------
@@ -226,6 +349,7 @@ export function analyse(figures: EngineFigures): EngineResult {
       a.title.localeCompare(b.title)
   );
   skipped.sort((a, b) => a.ruleId.localeCompare(b.ruleId));
+  unbenchmarked.sort((a, b) => a.ruleId.localeCompare(b.ruleId));
 
-  return { rulesetVersion: RULESET_VERSION, flags, skipped };
+  return { rulesetVersion: RULESET_VERSION, flags, skipped, unbenchmarked };
 }

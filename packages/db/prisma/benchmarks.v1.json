@@ -1,0 +1,150 @@
+{
+  "setVersion": "consumer-retail-v1",
+  "generatedFrom": "scripts/analysis/sources/consumer_retail_peers_v1.csv",
+  "percentileMethod": "linear interpolation between closest ranks",
+  "ratioDecimals": 4,
+  "asOfDate": "2026-02-01",
+  "sampleSize": 8,
+  "peers": [
+    {
+      "ticker": "VRA",
+      "company": "Vera Bradley, Inc.",
+      "cik": "1495320",
+      "fiscalYear": 2026,
+      "periodEnd": "2026-01-31",
+      "revenueUsd": 269651000,
+      "grossMargin": 0.4637,
+      "sgaPctRevenue": 0.5865,
+      "ebitdaMargin": -0.0895,
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1495320/000162828026021640/0001628280-26-021640-index.htm"
+    },
+    {
+      "ticker": "VNCE",
+      "company": "Vince Holding Corp.",
+      "cik": "1579157",
+      "fiscalYear": 2025,
+      "periodEnd": "2026-01-31",
+      "revenueUsd": 300007000,
+      "grossMargin": 0.4971,
+      "sgaPctRevenue": 0.4663,
+      "ebitdaMargin": 0.0405,
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1579157/000119312526158986/0001193125-26-158986-index.htm"
+    },
+    {
+      "ticker": "BSET",
+      "company": "Bassett Furniture Industries",
+      "cik": "10329",
+      "fiscalYear": 2025,
+      "periodEnd": "2025-11-29",
+      "revenueUsd": 335280000,
+      "grossMargin": 0.5628,
+      "sgaPctRevenue": 0.5379,
+      "ebitdaMargin": 0.0496,
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/10329/000143774926003189/0001437749-26-003189-index.htm"
+    },
+    {
+      "ticker": "DXLG",
+      "company": "Destination XL Group, Inc.",
+      "cik": "813298",
+      "fiscalYear": 2025,
+      "periodEnd": "2026-01-31",
+      "revenueUsd": 435017000,
+      "grossMargin": 0.4344,
+      "sgaPctRevenue": 0.4307,
+      "ebitdaMargin": -0.0065,
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/813298/000119312526115660/0001193125-26-115660-index.htm"
+    },
+    {
+      "ticker": "LVLU",
+      "company": "Lulus Fashion Lounge Holdings",
+      "cik": "1780201",
+      "fiscalYear": 2025,
+      "periodEnd": "2025-12-28",
+      "revenueUsd": 282284000,
+      "grossMargin": 0.4324,
+      "sgaPctRevenue": 0.4771,
+      "ebitdaMargin": -0.0266,
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1780201/000110465926036884/0001104659-26-036884-index.htm"
+    },
+    {
+      "ticker": "BBW",
+      "company": "Build-A-Bear Workshop, Inc.",
+      "cik": "1113809",
+      "fiscalYear": 2026,
+      "periodEnd": "2026-01-31",
+      "revenueUsd": 529832000,
+      "grossMargin": 0.558,
+      "sgaPctRevenue": 0.4326,
+      "ebitdaMargin": 0.1536,
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1113809/000143774926012501/0001437749-26-012501-index.htm"
+    },
+    {
+      "ticker": "TLYS",
+      "company": "Tillys, Inc.",
+      "cik": "1524025",
+      "fiscalYear": 2025,
+      "periodEnd": "2026-01-31",
+      "revenueUsd": 553585000,
+      "grossMargin": 0.2971,
+      "sgaPctRevenue": 0.332,
+      "ebitdaMargin": -0.0158,
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1524025/000162828026024440/0001628280-26-024440-index.htm"
+    },
+    {
+      "ticker": "DLTH",
+      "company": "Duluth Holdings Inc.",
+      "cik": "1649744",
+      "fiscalYear": 2026,
+      "periodEnd": "2026-02-01",
+      "revenueUsd": 565184000,
+      "grossMargin": 0.5337,
+      "sgaPctRevenue": 0.5495,
+      "ebitdaMargin": 0.0271,
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1649744/000119312526117508/0001193125-26-117508-index.htm"
+    }
+  ],
+  "stats": [
+    {
+      "setVersion": "consumer-retail-v1",
+      "industryCode": "CONSUMER_RETAIL",
+      "sizeBand": "$25M - $100M",
+      "metricCode": "GROSS_MARGIN",
+      "source": "SEC XBRL company facts, most recent 10-K per company (BBW, BSET, DLTH, DXLG, LVLU, TLYS, VNCE, VRA). 8 US-listed specialty retailers, revenue $270M-$565M, larger than the $25M - $100M label they are joined on.",
+      "asOfDate": "2026-02-01",
+      "sampleSize": 8,
+      "p10": 0.3918,
+      "p25": 0.4339,
+      "p50": 0.4804,
+      "p75": 0.5397,
+      "p90": 0.5594
+    },
+    {
+      "setVersion": "consumer-retail-v1",
+      "industryCode": "CONSUMER_RETAIL",
+      "sizeBand": "$25M - $100M",
+      "metricCode": "SGA_PCT_REVENUE",
+      "source": "SEC XBRL company facts, most recent 10-K per company (BBW, BSET, DLTH, DXLG, LVLU, TLYS, VNCE, VRA). 8 US-listed specialty retailers, revenue $270M-$565M, larger than the $25M - $100M label they are joined on.",
+      "asOfDate": "2026-02-01",
+      "sampleSize": 8,
+      "p10": 0.4011,
+      "p25": 0.4321,
+      "p50": 0.4717,
+      "p75": 0.5408,
+      "p90": 0.5606
+    },
+    {
+      "setVersion": "consumer-retail-v1",
+      "industryCode": "CONSUMER_RETAIL",
+      "sizeBand": "$25M - $100M",
+      "metricCode": "EBITDA_MARGIN",
+      "source": "SEC XBRL company facts, most recent 10-K per company (BBW, BSET, DLTH, DXLG, LVLU, TLYS, VNCE, VRA). 8 US-listed specialty retailers, revenue $270M-$565M, larger than the $25M - $100M label they are joined on.",
+      "asOfDate": "2026-02-01",
+      "sampleSize": 8,
+      "p10": -0.0455,
+      "p25": -0.0185,
+      "p50": 0.0103,
+      "p75": 0.0428,
+      "p90": 0.0808
+    }
+  ]
+}

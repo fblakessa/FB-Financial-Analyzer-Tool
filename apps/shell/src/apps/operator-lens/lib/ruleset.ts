@@ -5,7 +5,7 @@
 // threshold, severity or prompt changes, so re-running an old engagement
 // reproduces what it originally said rather than what the rules say today.
 
-export const RULESET_VERSION = "1.0.0";
+export const RULESET_VERSION = "1.1.0";
 
 export type RuleAxis = "BENCHMARK" | "TREND" | "COHERENCE";
 export type RuleSeverity = "HIGH" | "MEDIUM" | "LOW";
@@ -26,10 +26,45 @@ export type RuleDefinition = {
   operatorPrompt: string;
 };
 
-// Only the six rules built so far. The remaining eight in SPEC §7 (the four
-// benchmark rules, T-06, C-02, C-03, C-04) are not implemented yet, so the
-// engine does not claim coverage of them.
+// Nine of the fourteen rules in SPEC §7. Not implemented yet: B-04 (R&D
+// outside P10-P90), T-06, C-02, C-03, C-04. The engine does not claim coverage
+// of them.
 export const RULES: RuleDefinition[] = [
+  {
+    id: "B-01",
+    axis: "BENCHMARK",
+    severity: "HIGH",
+    minPeriods: 1,
+    title: "Gross margin below the industry lower quartile",
+    threshold: "Gross margin below industry P25",
+    // Benchmark rules compare against a seeded percentile, not a fixed gap, so
+    // the threshold is the percentile itself rather than a bps constant.
+    thresholdBps: 0,
+    operatorPrompt:
+      "Establish whether this is price or cost before anything else. Get the gross margin split by product category and channel, and compare the discounting calendar against the peer set. A structurally low margin and a promotional habit need different remedies."
+  },
+  {
+    id: "B-02",
+    axis: "BENCHMARK",
+    severity: "HIGH",
+    minPeriods: 1,
+    title: "SG&A as a percent of revenue above the industry upper quartile",
+    threshold: "SG&A as a percent of revenue above industry P75",
+    thresholdBps: 0,
+    operatorPrompt:
+      "Compare the SG&A build to the benchmark composition. Overweight sales spend and overweight G&A point at different problems and different remedies."
+  },
+  {
+    id: "B-03",
+    axis: "BENCHMARK",
+    severity: "HIGH",
+    minPeriods: 1,
+    title: "EBITDA margin below the industry lower quartile",
+    threshold: "EBITDA margin below industry P25",
+    thresholdBps: 0,
+    operatorPrompt:
+      "Work out whether the gap sits in gross margin or below it by walking the peer median down the statement line by line. Ask which cost lines management believes are structural and which they believe are discretionary, and get the evidence for each claim."
+  },
   {
     id: "T-01",
     axis: "TREND",
