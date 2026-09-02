@@ -42,7 +42,10 @@ export async function GET(
         // Stored as a JSON string; parsed by the client for display.
         computedValues: flag.computedValues,
         thresholdBreached: flag.thresholdBreached,
-        status: flag.status
+        status: flag.status,
+        ownerName: flag.ownerName,
+        note: flag.note,
+        updatedAt: flag.updatedAt.toISOString()
       }))
     }))
   });
