@@ -61,7 +61,18 @@ Operator. A consultant running commercial or operational diligence on a target c
 Job. Turn a target company's income statement into a defensible list of operational issues worth investigating, then work that list down to the findings that matter. Starts when a financial pack lands in the inbox; ends with a short, evidenced list fit to put in front of a partner. The consultant uploads whatever they were sent — a PDF, an Excel model, a CSV, a text document, a scan, a phone photo. There is no step where they retype a statement into a form before the software will work.
 The failure this addresses is not arithmetic. It is context. A 10% gross margin is fatal for software and unremarkable for a lumber distributor. So every comparison is made against both the company's own history and a sourced industry benchmark distribution.
 Screens.
-ScreenPurposeEngagementsEvery analysis in this project. Create, resume, flag counts.UploadDrop a PDF, scan, Excel, CSV, text or the input workbook. Detects kind, extracts.Review & ConfirmThe human gate. Editable grid of extracted figures beside the source. Nothing is analysed until confirmed.FindingsFlags with figures, thresholds, benchmark distribution and provenance, and a "where to look" operator prompt. Filter and triage.ScorecardFour category scores derived from the same flags. A view, not a second analysis.Rules referenceRead-only list of all 14 rules and thresholds, so the engine is inspectable.ExportCSV of flags, triage state, figures and benchmark sources.Inputs / Outputs.
+
+| Screen | Purpose |
+| --- | --- |
+| Engagements | Every analysis in this project. Create, resume, flag counts. |
+| Upload | Drop a PDF, scan, Excel, CSV, text or the input workbook. Detects kind, extracts. |
+| Review & Confirm | The human gate. Editable grid of extracted figures beside the source. Nothing is analysed until confirmed. |
+| Findings | Flags with figures, thresholds, benchmark distribution and provenance, and a "where to look" operator prompt. Filter and triage. |
+| Scorecard | Four category scores derived from the same flags. A view, not a second analysis. |
+| Rules reference | Read-only list of all 14 rules and thresholds, so the engine is inspectable. |
+| Export | CSV of flags, triage state, figures and benchmark sources. |
+
+Inputs / Outputs.
 In: a statement in any of the above forms; company details (name, industry code, size band, fiscal year end, currency, unit scale); a seeded versioned benchmark table of industry percentiles with source and as-of date; operator corrections and triage decisions.
 Stored: Engagement (stamped with the benchmark set and ruleset versions used), SourceDocument, Period and LineItem (each keeping the originally extracted value and whether the operator edited it), Flag, BenchmarkStat. All scoped by projectSlug.
 Out: a prioritised triaged list of findings on screen, four category scores, and a CSV export carrying flags with triage state and notes, figures by period, and every benchmark used with its source and as-of date.
