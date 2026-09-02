@@ -494,7 +494,7 @@ export function OperatorLensWorkspace({ projectId }: { projectId: string }) {
                   rule fired. Without this the distribution is invisible unless
                   the company happens to breach a quartile. */}
               {engagement.industryContext.length > 0 ? (
-                <div className={CARD}>
+                <div id="industry-context" className={CARD}>
                   <p className="text-sm font-bold text-ink">
                     Industry context ({engagement.industryContext[0].periodLabel})
                   </p>
