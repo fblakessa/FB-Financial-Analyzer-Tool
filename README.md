@@ -47,7 +47,8 @@ Then:
 - Mount a route under `apps/shell/src/app/(app)/apps/<module>/...`, wrapped in `<ModuleGate projectId moduleKey="<camelKey>">`.
 - Add API handlers under `apps/shell/src/app/api/apps/<module>/...` that call `requireProjectAccess(slug, "<camelKey>")` from `@ssa/server/access-service` and use `prisma` from `@ssa/db`.
 - Add the Prisma model to `packages/db/prisma/schema.prisma`.
-- Run `./scripts/reset.sh` to apply the schema change and re-seed.
+- Generate a migration for it, from `packages/db`: `npx prisma migrate dev --name <descriptive_name>`. This is required. `reset` runs `prisma migrate deploy`, which only replays migrations that already exist, so a schema edit with no migration leaves the tables uncreated with no error. Avoid `npm run migrate:dev -w @ssa/db -- --name <name>`: npm drops the `--name` flag and the command then hangs waiting on a prompt.
+- Run `./scripts/reset.sh` (Windows: `scripts\reset.ps1`) to replay migrations and re-seed.
 
 Copy Sample Tracker and adapt it. It exercises every one of these steps.
 

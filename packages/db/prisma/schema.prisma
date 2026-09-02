@@ -29,3 +29,160 @@ model SampleItem {
 
   @@index([projectSlug])
 }
+
+// ---------------------------------------------------------------------------
+// Operator Lens (module key `operatorLens`, spec: docs/operator-lens/SPEC.md §5)
+//
+// Every model below carries `projectSlug` with an index, matching SampleItem,
+// so no query ever runs unscoped. As with SampleItem it is a plain String, not
+// a foreign key, because the shell serves its project list statically.
+//
+// SQLite has no Prisma enums, so every status, severity, axis and kind column
+// is a String guarded by a TypeScript union. Each is marked PHASE-3 for
+// conversion to a platform enum when the module lands on Postgres.
+// ---------------------------------------------------------------------------
+
+// One company, one analysis, inside one project. `benchmarkSetVersion` and
+// `rulesetVersion` are stamped on the row so re-running an old engagement
+// after a benchmark refresh reproduces the original flags rather than new
+// ones. The engine does not run until `figuresConfirmedAt` and
+// `figuresConfirmedByName` are both set: that pair is the human gate.
+model Engagement {
+  id                     String    @id @default(cuid())
+  projectSlug            String
+  name                   String
+  companyName            String
+  industryCode           String
+  sizeBand               String
+  fiscalYearEnd          DateTime
+  currency               String
+  unitScale              String // PHASE-3: enum ACTUALS | THOUSANDS | MILLIONS
+  benchmarkSetVersion    String
+  rulesetVersion         String
+  status                 String // PHASE-3: enum DRAFT | AWAITING_CONFIRMATION | ANALYSED
+  figuresConfirmedAt     DateTime?
+  figuresConfirmedByName String? // PHASE-3: FK to a real user
+  createdByName          String // PHASE-3: FK to a real user
+  createdAt              DateTime  @default(now())
+
+  periods   Period[]
+  documents SourceDocument[]
+  flags     Flag[]
+
+  @@index([projectSlug])
+}
+
+// One column of figures on the income statement. `ordinal` fixes left-to-right
+// order. `endDate` is read from the uploaded file, never from the clock, so the
+// engine stays free of wall-clock input.
+model Period {
+  id           String   @id @default(cuid())
+  projectSlug  String
+  engagementId String
+  label        String
+  endDate      DateTime
+  ordinal      Int
+
+  engagement Engagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
+  lineItems  LineItem[]
+
+  @@index([projectSlug])
+  @@index([engagementId])
+}
+
+// The uploaded file and the state of its extraction. Every source kind lands in
+// the same Review & Confirm screen, so adding a source later is a new extractor
+// rather than a new column here.
+model SourceDocument {
+  id               String   @id @default(cuid())
+  projectSlug      String
+  engagementId     String
+  filename         String
+  mimeType         String
+  sourceKind       String // PHASE-3: enum WORKBOOK_XLSX | EXCEL | CSV | PDF | IMAGE_PDF | TEXT | MANUAL
+  storagePath      String
+  extractionStatus String // PHASE-3: enum PENDING | RUNNING | SUCCEEDED | FAILED
+  uploadedAt       DateTime @default(now())
+
+  engagement Engagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
+
+  @@index([projectSlug])
+  @@index([engagementId])
+}
+
+// One figure for one period. Both values are kept: `valueMinor` is what the
+// operator confirmed, `extractedValueMinor` what the extractor proposed, and
+// `wasEditedByOperator` says whether the two diverged. That trio is the audit
+// trail that makes a finding defensible in a client meeting.
+//
+// Money is integer minor units, never a float. BigInt rather than Int because
+// one period of a company in the $25M-$100M band exceeds Int32 once expressed
+// in cents, and Prisma maps Int to int4 on the Postgres platform (PHASE-3).
+model LineItem {
+  id                  String  @id @default(cuid())
+  projectSlug         String
+  periodId            String
+  code                String
+  valueMinor          BigInt
+  extractedValueMinor BigInt?
+  wasEditedByOperator Boolean @default(false)
+
+  period Period @relation(fields: [periodId], references: [id], onDelete: Cascade)
+
+  @@index([projectSlug])
+  @@index([periodId])
+}
+
+// One fired rule. `computedValues` holds the figures the rule used, so a flag
+// can be re-explained without re-running the engine. `operatorPrompt` is copied
+// from the ruleset at fire time rather than looked up later, so a prompt edit
+// cannot retroactively change what a past engagement said.
+model Flag {
+  id                String   @id @default(cuid())
+  projectSlug       String
+  engagementId      String
+  ruleId            String
+  axis              String // PHASE-3: enum BENCHMARK | TREND | COHERENCE
+  severity          String // PHASE-3: enum HIGH | MEDIUM | LOW
+  title             String
+  operatorPrompt    String
+  computedValues    String // JSON string; SQLite has no Json scalar
+  thresholdBreached String
+  benchmarkRef      String?
+  status            String // PHASE-3: enum OPEN | REVIEWED | ESCALATED | DISMISSED
+  ownerName         String? // PHASE-3: FK to a real user
+  note              String?
+  updatedAt         DateTime @updatedAt
+
+  engagement Engagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
+
+  @@index([projectSlug])
+  @@index([engagementId])
+}
+
+// One industry/size/metric percentile distribution, loaded from the committed
+// benchmark seed. `source`, `asOfDate` and `sampleSize` travel with every row
+// because an unsourced benchmark cannot be repeated in a client meeting.
+//
+// Percentiles are ratios rather than money, so Float is right here; the
+// determinism contract rounds ratios to 4dp at a single choke point before
+// comparison.
+model BenchmarkStat {
+  id           String   @id @default(cuid())
+  projectSlug  String
+  setVersion   String
+  industryCode String
+  sizeBand     String
+  metricCode   String
+  p10          Float
+  p25          Float
+  p50          Float
+  p75          Float
+  p90          Float
+  source       String
+  asOfDate     DateTime
+  sampleSize   Int
+
+  @@unique([projectSlug, setVersion, industryCode, sizeBand, metricCode])
+  @@index([projectSlug])
+}

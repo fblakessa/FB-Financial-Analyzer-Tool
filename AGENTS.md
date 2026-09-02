@@ -66,7 +66,20 @@ Steps (nav is data-driven, so never hand-edit chrome):
 4. Create `apps/shell/src/apps/<module>/` (components, hooks, lib).
 5. Mount a route at `apps/shell/src/app/(app)/apps/<module>/...` wrapped in `<ModuleGate projectId moduleKey="<camelKey>">`.
 6. Add API handlers at `apps/shell/src/app/api/apps/<module>/...` that call `requireProjectAccess(slug, "<camelKey>")` from `@ssa/server/access-service` and use `prisma` from `@ssa/db`.
-7. Add the Prisma model to `packages/db/prisma/schema.prisma`, then run `./scripts/reset.sh`.
+7. Add the Prisma model to `packages/db/prisma/schema.prisma`, then generate a migration (see "Schema changes" below). `reset` alone will not create the tables.
+
+## Schema changes
+
+`reset.sh` / `reset.ps1` run `prisma migrate deploy`, which only replays migrations that already exist. A schema edit therefore needs a migration generated first, or the tables silently never appear. Run it from `packages/db`:
+
+```
+cd packages/db
+npx prisma migrate dev --name <descriptive_name>
+```
+
+Do not use `npm run migrate:dev -w @ssa/db -- --name <name>`: npm drops the `--name` flag, prisma then prompts for a name, and with no stdin the command hangs. Once the migration exists, `reset` replays it normally.
+
+Windows: run `scripts\run.ps1` / `reset.ps1` rather than the `.sh` versions. The shell scripts derive `DATABASE_URL` from `pwd`, and Git Bash returns `/c/Users/...`, which Prisma resolves against the drive root and turns into a phantom `C:\c\Users\...` database. `run.sh` now converts the path, but the `.ps1` scripts are the tested Windows path.
 
 Sample Tracker exercises every step — copy and adapt it. See README.md for the full walkthrough.
 

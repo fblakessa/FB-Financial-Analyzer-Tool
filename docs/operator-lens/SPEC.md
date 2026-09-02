@@ -266,7 +266,7 @@ stated in the demo before anyone asks.
 
 ## 5. Data model
 
-Four models added to `packages/db/prisma/schema.prisma`. Prisma against SQLite.
+Six models added to `packages/db/prisma/schema.prisma`. Prisma against SQLite.
 
 Two constraints from the shell: **SQLite has no Prisma enums**, so every status column is a
 `String` guarded by a TypeScript union and marked `PHASE-3` for conversion to a platform
@@ -277,7 +277,7 @@ enum. And **everything is project-scoped**, so every model carries `projectSlug 
 |---|---|---|
 | `Engagement` | One company, one analysis, inside one project | `id`, `projectSlug`, `name`, `companyName`, `industryCode`, `sizeBand`, `fiscalYearEnd`, `currency`, `unitScale`, `benchmarkSetVersion`, `rulesetVersion`, `status` (String), `createdByName`, `createdAt` |
 | `Period` | One column of figures | `id`, `engagementId`, `label`, `endDate`, `ordinal` |
-| `SourceDocument` | The uploaded file | `id`, `engagementId`, `filename`, `mimeType`, `sourceKind` (String: `WORKBOOK_XLSX`/`EXCEL`/`CSV`/`PDF`/`MANUAL`), `storagePath`, `extractionStatus` (String), `uploadedAt` |
+| `SourceDocument` | The uploaded file | `id`, `engagementId`, `filename`, `mimeType`, `sourceKind` (String: `WORKBOOK_XLSX`/`EXCEL`/`CSV`/`PDF`/`IMAGE_PDF`/`TEXT`/`MANUAL`, matching §6), `storagePath`, `extractionStatus` (String), `uploadedAt` |
 | `LineItem` | One figure, with its extraction provenance | `id`, `periodId`, `code`, `valueMinor`, `extractedValueMinor` (nullable), `wasEditedByOperator` (Boolean) |
 | `Flag` | One fired rule | `id`, `engagementId`, `ruleId`, `axis`, `severity` (String), `title`, `operatorPrompt`, `computedValues` (JSON string), `thresholdBreached`, `benchmarkRef`, `status` (String), `ownerName`, `note`, `updatedAt` |
 | `BenchmarkStat` | One industry/size/metric distribution | `id`, `setVersion`, `industryCode`, `sizeBand`, `metricCode`, `p10`, `p25`, `p50`, `p75`, `p90`, `source`, `asOfDate`, `sampleSize` |
