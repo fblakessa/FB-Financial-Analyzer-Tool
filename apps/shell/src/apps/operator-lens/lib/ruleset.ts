@@ -5,15 +5,38 @@
 // threshold, severity or prompt changes, so re-running an old engagement
 // reproduces what it originally said rather than what the rules say today.
 
-export const RULESET_VERSION = "1.1.0";
+export const RULESET_VERSION = "1.2.0";
 
 export type RuleAxis = "BENCHMARK" | "TREND" | "COHERENCE";
 export type RuleSeverity = "HIGH" | "MEDIUM" | "LOW";
+
+// Scorecard categories (SPEC §8.5). The axis says how a rule reaches its
+// verdict; the category says what part of the business it is about, which is
+// what an operator wants scored. They are deliberately different cuts of the
+// same rules.
+export type ScorecardCategory = "PROFITABILITY" | "COST_STRUCTURE" | "GROWTH" | "DATA_QUALITY";
+
+// Fixed display order, so the scorecard renders identically every time.
+export const SCORECARD_CATEGORIES: ScorecardCategory[] = [
+  "PROFITABILITY",
+  "COST_STRUCTURE",
+  "GROWTH",
+  "DATA_QUALITY"
+];
+
+export const SCORECARD_CATEGORY_LABEL: Record<ScorecardCategory, string> = {
+  PROFITABILITY: "Profitability",
+  COST_STRUCTURE: "Cost Structure",
+  GROWTH: "Growth",
+  DATA_QUALITY: "Data Quality"
+};
 
 export type RuleDefinition = {
   id: string;
   axis: RuleAxis;
   severity: RuleSeverity;
+  // Which scorecard category this rule scores against.
+  category: ScorecardCategory;
   // Periods required before the rule is evaluated at all. Below this the rule
   // is skipped and reported as reduced coverage, never as a pass.
   minPeriods: number;
@@ -34,6 +57,7 @@ export const RULES: RuleDefinition[] = [
     id: "B-01",
     axis: "BENCHMARK",
     severity: "HIGH",
+    category: "PROFITABILITY",
     minPeriods: 1,
     title: "Gross margin below the industry lower quartile",
     threshold: "Gross margin below industry P25",
@@ -47,6 +71,7 @@ export const RULES: RuleDefinition[] = [
     id: "B-02",
     axis: "BENCHMARK",
     severity: "HIGH",
+    category: "COST_STRUCTURE",
     minPeriods: 1,
     title: "SG&A as a percent of revenue above the industry upper quartile",
     threshold: "SG&A as a percent of revenue above industry P75",
@@ -58,6 +83,7 @@ export const RULES: RuleDefinition[] = [
     id: "B-03",
     axis: "BENCHMARK",
     severity: "HIGH",
+    category: "PROFITABILITY",
     minPeriods: 1,
     title: "EBITDA margin below the industry lower quartile",
     threshold: "EBITDA margin below industry P25",
@@ -69,6 +95,7 @@ export const RULES: RuleDefinition[] = [
     id: "T-01",
     axis: "TREND",
     severity: "HIGH",
+    category: "COST_STRUCTURE",
     minPeriods: 2,
     title: "SG&A growth outpaced revenue growth",
     threshold: "SG&A growth exceeds revenue growth by 5.00pp or more",
@@ -80,6 +107,7 @@ export const RULES: RuleDefinition[] = [
     id: "T-02",
     axis: "TREND",
     severity: "HIGH",
+    category: "PROFITABILITY",
     minPeriods: 3,
     title: "Gross margin compressed in consecutive periods",
     threshold: "Gross margin falls 150bps or more in each of two consecutive periods",
@@ -91,6 +119,7 @@ export const RULES: RuleDefinition[] = [
     id: "T-03",
     axis: "TREND",
     severity: "MEDIUM",
+    category: "GROWTH",
     minPeriods: 3,
     title: "Revenue growth decelerated",
     threshold: "Revenue growth rate is lower than the preceding period's growth rate",
@@ -102,6 +131,7 @@ export const RULES: RuleDefinition[] = [
     id: "T-04",
     axis: "TREND",
     severity: "HIGH",
+    category: "COST_STRUCTURE",
     minPeriods: 2,
     title: "COGS growth outpaced revenue growth",
     threshold: "COGS growth exceeds revenue growth by 3.00pp or more",
@@ -113,6 +143,7 @@ export const RULES: RuleDefinition[] = [
     id: "T-05",
     axis: "TREND",
     severity: "HIGH",
+    category: "PROFITABILITY",
     minPeriods: 2,
     title: "EBITDA margin fell while revenue grew",
     threshold: "EBITDA margin falls 200bps or more in a period where revenue grows",
@@ -124,6 +155,7 @@ export const RULES: RuleDefinition[] = [
     id: "C-01",
     axis: "COHERENCE",
     severity: "HIGH",
+    category: "DATA_QUALITY",
     minPeriods: 1,
     title: "Derived row does not reconcile",
     threshold: "An entered derived row differs from its recalculation by more than 0.50%",

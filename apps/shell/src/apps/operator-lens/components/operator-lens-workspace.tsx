@@ -12,7 +12,10 @@ import {
   lineItemRank,
   unitScaleLabel
 } from "../lib/line-items";
+import { RULES_BY_ID, type ScorecardCategory } from "../lib/ruleset";
+import { buildScorecard } from "../lib/scorecard";
 import { BenchmarkStrip, type BenchmarkStripData } from "./benchmark-strip";
+import { ScorecardPanel } from "./scorecard-panel";
 
 // Findings screen. Visual language follows Sample Tracker: rounded cards on the
 // canvas, ink headings, muted body copy, uppercase tracked column headers.
@@ -55,6 +58,11 @@ type Engagement = {
   flags: Flag[];
   periods: Period[];
   industryContext: IndustryContext[];
+  // Which rules could not run, so the scorecard can show reduced coverage.
+  coverage?: {
+    skipped: { ruleId: string; minPeriods: number; periodCount: number }[];
+    unbenchmarked: { ruleId: string; metricCode: string }[];
+  };
 };
 
 // A benchmark flag stores the whole distribution it fired against, so the strip
@@ -170,6 +178,7 @@ export function OperatorLensWorkspace({
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
   const [severityFilter, setSeverityFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [categoryFilter, setCategoryFilter] = useState<ScorecardCategory | "ALL">("ALL");
 
   const basePath = `/api/apps/operator-lens/projects/${encodeURIComponent(projectId)}`;
 
@@ -196,7 +205,8 @@ export function OperatorLensWorkspace({
             currency: figures?.currency ?? "USD",
             unitScale: figures?.unitScale ?? "ACTUALS",
             periods: figures?.periods ?? [],
-            industryContext: entry.industryContext ?? []
+            industryContext: entry.industryContext ?? [],
+            coverage: entry.coverage
           };
         })
       );
@@ -253,6 +263,11 @@ export function OperatorLensWorkspace({
         flags: [...engagement.flags]
           .filter((flag) => severityFilter === "ALL" || flag.severity === severityFilter)
           .filter((flag) => statusFilter === "ALL" || flag.status === statusFilter)
+          .filter(
+            (flag) =>
+              categoryFilter === "ALL" ||
+              RULES_BY_ID[flag.ruleId]?.category === categoryFilter
+          )
           .sort(
             (a, b) =>
               (SEVERITY_RANK[a.severity] ?? 9) - (SEVERITY_RANK[b.severity] ?? 9) ||
@@ -261,7 +276,7 @@ export function OperatorLensWorkspace({
               a.title.localeCompare(b.title)
           )
       })),
-    [engagements, engagementId, severityFilter, statusFilter]
+    [engagements, engagementId, severityFilter, statusFilter, categoryFilter]
   );
 
   if (loading) {
@@ -373,6 +388,18 @@ export function OperatorLensWorkspace({
 
                 {error ? <p className="mt-3 text-sm font-semibold text-red-600">{error}</p> : null}
               </div>
+
+              {/* Scorecard: a view over the same flags, so it reflects triage
+                  the moment a status changes. */}
+              <ScorecardPanel
+                scorecard={buildScorecard({
+                  flags: engagement.flags,
+                  skipped: engagement.coverage?.skipped,
+                  unbenchmarked: engagement.coverage?.unbenchmarked
+                })}
+                selectedCategory={categoryFilter}
+                onSelectCategory={setCategoryFilter}
+              />
 
               {/* Findings */}
               {flags.length === 0 ? (
