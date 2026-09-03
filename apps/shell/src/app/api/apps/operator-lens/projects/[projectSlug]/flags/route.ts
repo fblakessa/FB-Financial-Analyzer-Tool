@@ -5,6 +5,7 @@ import { requireProjectAccess } from "@ssa/server/access-service";
 
 import { percentilePosition, type BenchmarkStat } from "@/apps/operator-lens/lib/engine";
 import { ratio, toBps } from "@/apps/operator-lens/lib/metrics";
+import { coverageFor } from "@/apps/operator-lens/lib/scorecard";
 
 // Metric code -> the line item its numerator comes from. Denominator is always
 // revenue.
@@ -39,7 +40,9 @@ export async function GET(
         orderBy: { ordinal: "desc" },
         take: 1,
         include: { lineItems: true }
-      }
+      },
+      // Total period count drives which rules could have run at all.
+      _count: { select: { periods: true } }
     }
   });
 
@@ -112,6 +115,23 @@ export async function GET(
       benchmarkSetVersion: engagement.benchmarkSetVersion,
       status: engagement.status,
       industryContext: industryContextFor(engagement),
+      // Which rules could not run for this engagement. The scorecard shows
+      // these as reduced coverage rather than scoring them clean.
+      coverage: coverageFor({
+        periodCount: engagement._count.periods,
+        benchmarkMetricCodes: [
+          ...new Set(
+            benchmarkRows
+              .filter(
+                (row) =>
+                  row.setVersion === engagement.benchmarkSetVersion &&
+                  row.industryCode === engagement.industryCode &&
+                  row.sizeBand === engagement.sizeBand
+              )
+              .map((row) => row.metricCode)
+          )
+        ]
+      }),
       flags: engagement.flags.map((flag) => ({
         id: flag.id,
         ruleId: flag.ruleId,
