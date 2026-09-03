@@ -5,23 +5,20 @@ import { useParams } from "next/navigation";
 
 import { ModuleGate } from "@ssa/ui/module-gate";
 
-// Mirrors the Sample Tracker route shape: the module UI is loaded client-side
-// and wrapped in <ModuleGate>, which blocks the module unless it is enabled for
-// this project.
-const OperatorLensWorkspace = dynamic(
+// The module index: the engagement list. Client-only via next/dynamic with
+// ssr false, wrapped in ModuleGate, matching Sample Tracker.
+const EngagementList = dynamic(
   () =>
-    import("@/apps/operator-lens/components/operator-lens-workspace").then(
-      (mod) => mod.OperatorLensWorkspace
-    ),
+    import("@/apps/operator-lens/components/engagement-list").then((mod) => mod.EngagementList),
   { ssr: false }
 );
 
-export default function OperatorLensPage() {
+export default function OperatorLensIndexPage() {
   const { projectId } = useParams<{ projectId: string }>();
 
   return (
     <ModuleGate projectId={projectId} moduleKey="operatorLens">
-      <OperatorLensWorkspace projectId={projectId} />
+      <EngagementList projectId={projectId} />
     </ModuleGate>
   );
 }

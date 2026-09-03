@@ -10,7 +10,8 @@ import { useProjectPortfolio } from "@/components/project-portfolio-provider";
 // Maps a per-project module key (camelCase) to its registry route key so the
 // Overview can link to enabled modules. Extend this when you add a module.
 const MODULE_ROUTE_KEY: Record<string, ModuleKey> = {
-  sampleTracker: "sample-tracker"
+  sampleTracker: "sample-tracker",
+  operatorLens: "operator-lens"
 };
 
 export default function ProjectOverviewPage() {
