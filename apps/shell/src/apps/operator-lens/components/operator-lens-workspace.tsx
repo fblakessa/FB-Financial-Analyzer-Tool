@@ -334,6 +334,15 @@ export function OperatorLensWorkspace({
                     ruleset {engagement.rulesetVersion} · benchmark set {engagement.benchmarkSetVersion} ·
                     status {engagement.status}
                   </span>
+                  {/* A plain download link rather than a fetch: the route sets
+                      Content-Disposition, so the browser names the file. */}
+                  <a
+                    href={`${basePath}/engagements/${encodeURIComponent(engagement.id)}/export`}
+                    download
+                    className="rounded-full border border-slate-200 bg-canvas px-4 py-2 text-xs font-bold text-ink transition hover:border-ink/40"
+                  >
+                    Export CSV
+                  </a>
                 </div>
 
                 <div className="mt-5 flex flex-wrap items-end gap-4 border-t border-slate-100 pt-5">
