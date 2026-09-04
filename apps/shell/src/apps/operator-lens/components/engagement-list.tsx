@@ -86,6 +86,13 @@ export function EngagementList({ projectId }: { projectId: string }) {
           // rather than just "nothing here".
           <div className="mt-6 rounded-2xl bg-canvas p-6">
             <p className="text-sm font-bold text-ink">No analyses yet</p>
+            <p className="mt-1 text-sm leading-6 text-muted">
+              Start with{" "}
+              <Link href={`${basePath}/new`} className="font-semibold text-ink underline">
+                New analysis
+              </Link>
+              , the button above right.
+            </p>
             <ol className="mt-3 space-y-2 text-sm leading-6 text-muted">
               <li>
                 1. Choose <strong className="text-ink">New analysis</strong> and download the input

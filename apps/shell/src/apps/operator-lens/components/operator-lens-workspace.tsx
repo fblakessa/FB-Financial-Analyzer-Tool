@@ -12,7 +12,14 @@ import {
   lineItemRank,
   unitScaleLabel
 } from "../lib/line-items";
-import { RULES_BY_ID, type ScorecardCategory } from "../lib/ruleset";
+import { RULES, RULES_BY_ID, type ScorecardCategory } from "../lib/ruleset";
+import {
+  describeCoverage,
+  describeCoverageGap,
+  groupFindingsByPeriod,
+  sortFindings,
+  summariseFindings
+} from "../lib/interpret";
 import { buildScorecard } from "../lib/scorecard";
 import { BenchmarkStrip, type BenchmarkStripData } from "./benchmark-strip";
 import { ScorecardPanel } from "./scorecard-panel";
@@ -110,6 +117,9 @@ const INPUT = SELECT + " w-full";
 const COLUMN_HEAD =
   "px-4 py-3 text-[11px] font-extrabold uppercase tracking-[0.14em] text-outline";
 const PILL = "rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide ring-1";
+
+// How many rules exist to run at all, so coverage can be stated as a fraction.
+const RULE_COUNT = RULES.length;
 
 function formatBps(value: number): string {
   return `${(value / 100).toFixed(2)}%`;
@@ -258,24 +268,32 @@ export function OperatorLensWorkspace({
     () =>
       engagements
         .filter((engagement) => !engagementId || engagement.id === engagementId)
-        .map((engagement) => ({
-        engagement,
-        flags: [...engagement.flags]
-          .filter((flag) => severityFilter === "ALL" || flag.severity === severityFilter)
-          .filter((flag) => statusFilter === "ALL" || flag.status === statusFilter)
-          .filter(
-            (flag) =>
-              categoryFilter === "ALL" ||
-              RULES_BY_ID[flag.ruleId]?.category === categoryFilter
-          )
-          .sort(
-            (a, b) =>
-              (SEVERITY_RANK[a.severity] ?? 9) - (SEVERITY_RANK[b.severity] ?? 9) ||
-              (AXIS_RANK[a.axis] ?? 9) - (AXIS_RANK[b.axis] ?? 9) ||
-              a.ruleId.localeCompare(b.ruleId) ||
-              a.title.localeCompare(b.title)
-          )
-      })),
+        .map((engagement) => {
+          // Oldest to newest, which is the order sortFindings indexes against.
+          const periodLabels = [...engagement.periods]
+            .sort((a, b) => a.ordinal - b.ordinal)
+            .map((period) => period.label);
+
+          const filtered = engagement.flags
+            .filter((flag) => severityFilter === "ALL" || flag.severity === severityFilter)
+            .filter((flag) => statusFilter === "ALL" || flag.status === statusFilter)
+            .filter(
+              (flag) =>
+                categoryFilter === "ALL" ||
+                RULES_BY_ID[flag.ruleId]?.category === categoryFilter
+            );
+
+          // Most recent period first, then severity: an operator reads the
+          // current cycle before the prior one. The engine keeps its own
+          // storage order; this is only the reading order.
+          return {
+            engagement,
+            flags: sortFindings(filtered, periodLabels),
+            // Grouped by the period each finding sorts on, so the ordering rule
+            // is visible rather than implied.
+            groups: groupFindingsByPeriod(filtered, periodLabels)
+          };
+        }),
     [engagements, engagementId, severityFilter, statusFilter, categoryFilter]
   );
 
@@ -295,7 +313,7 @@ export function OperatorLensWorkspace({
         &larr; All analyses
       </Link>
 
-      {visible.map(({ engagement, flags }) => {
+      {visible.map(({ engagement, flags, groups }) => {
         const periodRange =
           engagement.periods.length > 0
             ? `${engagement.periods[0].label} to ${engagement.periods[engagement.periods.length - 1].label}`
@@ -305,6 +323,34 @@ export function OperatorLensWorkspace({
           severity,
           count: engagement.flags.filter((flag) => flag.severity === severity).length
         }));
+
+        const gaps = [
+          ...(engagement.coverage?.skipped ?? []).map((entry) => ({
+            ruleId: entry.ruleId,
+            reason: "SKIPPED" as const,
+            detail: `needs ${entry.minPeriods} periods, this analysis has ${entry.periodCount}`
+          })),
+          ...(engagement.coverage?.unbenchmarked ?? []).map((entry) => ({
+            ruleId: entry.ruleId,
+            reason: "UNBENCHMARKED" as const,
+            detail: `has no seeded benchmark for ${entry.metricCode} in this industry and size band`
+          }))
+        ].sort((a, b) => a.ruleId.localeCompare(b.ruleId));
+
+        // One sentence stating what the analysis found, derived from the flags.
+        const summary = summariseFindings({
+          companyName: engagement.companyName,
+          flags: engagement.flags,
+          periodCount: engagement.periods.length,
+          ruleCount: RULE_COUNT,
+          coverageGapCount: gaps.length
+        });
+
+        const coverageLine = describeCoverage({
+          ruleCount: RULE_COUNT,
+          gapCount: gaps.length,
+          periodCount: engagement.periods.length
+        });
 
         // Income statement order, never alphabetical.
         const codes = [
@@ -316,9 +362,34 @@ export function OperatorLensWorkspace({
             key={engagement.id}
             eyebrow="Operator Lens findings"
             title={engagement.companyName}
-            description={`${engagement.industryCode} · ${engagement.sizeBand} · ${periodRange} · figures in ${scale}`}
+            description={summary}
           >
             <div className="space-y-6">
+              {/* The deliverable header: who this is about and over what
+                  periods, labelled rather than run together in one line. */}
+              <div className={CARD}>
+                <dl className="grid gap-4 sm:grid-cols-3">
+                  {[
+                    { label: "Industry", value: engagement.industryCode },
+                    { label: "Size band", value: engagement.sizeBand },
+                    { label: "Periods", value: periodRange }
+                  ].map((entry) => (
+                    <div key={entry.label}>
+                      <dt className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-outline">
+                        {entry.label}
+                      </dt>
+                      <dd className="mt-1 font-display text-lg font-semibold text-ink">
+                        {entry.value}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+                <p className="mt-4 border-t border-slate-100 pt-3 text-xs text-outline">
+                  {engagement.periods.length} period
+                  {engagement.periods.length === 1 ? "" : "s"} · figures in {scale} · {coverageLine}
+                </p>
+              </div>
+
               {/* Summary counts and the versions the analysis was stamped with. */}
               <div className={CARD}>
                 <div className="flex flex-wrap items-center gap-3">
@@ -410,14 +481,69 @@ export function OperatorLensWorkspace({
                 onSelectCategory={setCategoryFilter}
               />
 
+              {/* Rules that could not run. Stated separately and before the
+                  findings, because a skipped rule must never read as a pass. */}
+              {gaps.length > 0 ? (
+                <div className="rounded-[28px] bg-amber-50 p-6 ring-1 ring-amber-200">
+                  <p className="text-sm font-bold text-amber-800">
+                    {gaps.length} rule{gaps.length === 1 ? "" : "s"} could not run
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-amber-800">
+                    These were not checked. Their categories are scored on less than the full rule
+                    set, so a high score there means less was examined, not that nothing was wrong.
+                  </p>
+                  <ul className="mt-3 space-y-1">
+                    {gaps.map((gap) => (
+                      <li key={gap.ruleId} className="text-sm text-amber-900">
+                        {describeCoverageGap(gap)}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+
               {/* Findings */}
-              {flags.length === 0 ? (
+              {engagement.flags.length === 0 ? (
+                // Nothing fired. Say so plainly and say what was examined, so
+                // this cannot be mistaken for an analysis that failed to run.
                 <div className={CARD}>
-                  <p className="text-sm text-muted">No findings match the current filters.</p>
+                  <p className="text-sm font-bold text-ink">No findings</p>
+                  <p className="mt-1 text-sm leading-6 text-muted">
+                    Every rule that could run passed. {coverageLine} On the evidence checked, this
+                    company shows no threshold breach on level, trend or coherence.
+                  </p>
+                  <p className="mt-3 text-xs text-outline">
+                    Open the income statement below to see the figures this was based on, and the
+                    industry context above for where the company sits against peers.
+                  </p>
+                </div>
+              ) : flags.length === 0 ? (
+                <div className={CARD}>
+                  <p className="text-sm font-bold text-ink">No findings match the current filters</p>
+                  <p className="mt-1 text-sm text-muted">
+                    {engagement.flags.length} finding
+                    {engagement.flags.length === 1 ? " exists" : "s exist"} on this analysis. Clear a
+                    filter to see them.
+                  </p>
                 </div>
               ) : (
-                <ol className="space-y-4">
-                  {flags.map((flag) => {
+                <div className="space-y-7">
+                  {groups.map((group) => (
+                  <section key={group.periodLabel ?? "undated"}>
+                    {/* The period this group sorts on. A finding spanning
+                        several periods sits under its latest one, so the
+                        ordering rule is visible instead of implied. */}
+                    <div className="flex flex-wrap items-baseline gap-3 border-b border-slate-200 pb-2">
+                      <h2 className="font-display text-lg font-semibold text-ink">
+                        {group.periodLabel ?? "No period"}
+                      </h2>
+                      <span className="text-xs text-outline">
+                        {group.flags.length} finding{group.flags.length === 1 ? "" : "s"}
+                        {group.periodLabel ? ` ending ${group.periodLabel}` : ""}
+                      </span>
+                    </div>
+                    <ol className="mt-4 space-y-4">
+                  {group.flags.map((flag) => {
                     const severity = SEVERITY_STYLE[flag.severity] ?? SEVERITY_STYLE.LOW;
                     const computed = describeComputed(flag.computedValues);
                     const saving = savingId === flag.id;
@@ -541,7 +667,10 @@ export function OperatorLensWorkspace({
                       </li>
                     );
                   })}
-                </ol>
+                    </ol>
+                  </section>
+                  ))}
+                </div>
               )}
 
               {/* Industry context for every benchmark metric, whether or not a
