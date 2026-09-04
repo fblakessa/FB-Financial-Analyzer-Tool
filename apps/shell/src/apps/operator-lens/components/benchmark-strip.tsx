@@ -1,5 +1,7 @@
 "use client";
 
+import { interpretBenchmark, metricLabel } from "../lib/interpret";
+
 // The industry context strip (SPEC §8.3a). Shows the whole P10-P90
 // distribution with a marker for where this company sits, never a pass/fail,
 // and always renders the source, as-of date and sample size directly beneath
@@ -21,10 +23,12 @@ export type BenchmarkStripData = {
   sampleSize: number;
 };
 
-const METRIC_LABEL: Record<string, string> = {
-  GROSS_MARGIN: "Gross margin",
-  SGA_PCT_REVENUE: "SG&A as a percent of revenue",
-  EBITDA_MARGIN: "EBITDA margin"
+// Verdict styling only. Which verdict applies is decided by the pure
+// interpretBenchmark(), so the wording cannot drift between strips.
+const VERDICT_STYLE: Record<string, string> = {
+  GOOD: "bg-teal/10 text-teal ring-teal/30",
+  WATCH: "bg-amber-50 text-amber-700 ring-amber-200",
+  CONCERN: "bg-red-50 text-red-700 ring-red-200"
 };
 
 function pct(bps: number): string {
@@ -44,6 +48,7 @@ function ordinal(position: number): string {
 }
 
 export function BenchmarkStrip({ data }: { data: BenchmarkStripData }) {
+  const interpretation = interpretBenchmark(data.metricCode, data.percentilePosition);
   const points = [
     { label: "P10", bps: data.p10Bps },
     { label: "P25", bps: data.p25Bps },
@@ -63,14 +68,26 @@ export function BenchmarkStrip({ data }: { data: BenchmarkStripData }) {
     <div className="rounded-2xl bg-canvas p-4">
       <div className="flex flex-wrap items-baseline gap-2">
         <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-outline">
-          {METRIC_LABEL[data.metricCode] ?? data.metricCode}
+          {metricLabel(data.metricCode)}
         </p>
         <p className="text-sm font-bold text-ink">{pct(data.companyValueBps)}</p>
+        <span
+          className={`rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide ring-1 ${
+            VERDICT_STYLE[interpretation.verdict] ?? VERDICT_STYLE.WATCH
+          }`}
+        >
+          {interpretation.verdictLabel}
+        </span>
         <p className="text-xs text-muted">
           {data.industryCode} · {data.sizeBand} · roughly the {ordinal(data.percentilePosition)}{" "}
           percentile
         </p>
       </div>
+
+      {/* What the percentile means, in words. Derived from the position and the
+          metric's direction, so a low SG&A ratio reads as a strength and a low
+          gross margin does not. */}
+      <p className="mt-1.5 text-sm leading-6 text-text">{interpretation.sentence}</p>
 
       {/* Distribution bar: quartile band shaded, median marked, company marked. */}
       <div className="relative mt-4 h-2 rounded-full bg-slate-200">

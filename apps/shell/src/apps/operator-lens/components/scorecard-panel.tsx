@@ -83,10 +83,9 @@ export function ScorecardPanel({
   selectedCategory: ScorecardCategory | "ALL";
   onSelectCategory: (category: ScorecardCategory | "ALL") => void;
 }) {
-  const gaps = scorecard.categories.flatMap((entry) =>
-    entry.coverageGaps.map((gap) => ({ ...gap, label: entry.label }))
-  );
-
+  // The detailed gap list lives on the findings screen so it is stated once,
+  // and prominently. The per-tile badge below keeps the caveat attached to the
+  // score it qualifies.
   return (
     <div className={CARD}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -122,25 +121,7 @@ export function ScorecardPanel({
         ))}
       </div>
 
-      {gaps.length > 0 ? (
-        <div className="mt-4 border-t border-slate-100 pt-4">
-          <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-outline">
-            Reduced coverage
-          </p>
-          <p className="mt-1 text-xs leading-5 text-muted">
-            These rules could not run, so their categories are scored on less than the full rule
-            set. A high score here means less was checked, not that nothing was wrong.
-          </p>
-          <ul className="mt-2 space-y-1">
-            {gaps.map((gap) => (
-              <li key={`${gap.label}-${gap.ruleId}`} className="text-xs text-text">
-                <span className="font-semibold text-ink">{gap.ruleId}</span> ({gap.label}):{" "}
-                {gap.detail}
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
+
     </div>
   );
 }
